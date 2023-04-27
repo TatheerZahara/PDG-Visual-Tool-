@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=0.5">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.3/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+    <title>PDG Visualization Tool</title>
+    <style>
+        .container {
+            display: flex;
+            flex-direction: row;
+        }
+        tr {
+            border: 1px solid rgb(175, 179, 182);
+            
+        }
+        div.scroll {
+            margin: 4px, 4px;
+            padding: 1px;
+            width: 1000px;
+            height: 549px;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+        input[type="file"]{
+            display: inline;
+            float:right;
+            width: 25%;
+            padding: 35px 0 0 0;
+            height: 35px;
+            overflow: hidden;
+            -webkit-box-sizing: border-box;
+            -moz-box-sizing: border-box;
+            box-sizing: border-box;
+            background: url('https://100dayscss.com/codepen/upload.svg') center center no-repeat #948f8f00;
+            border-radius: 10px;
+            background-size: 50px 50px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-inverse">
+        <div class="container-fluid">
+          <div class="navbar-header">
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#myNavbar">
+              <span class="icon-bar"></span>
+              <span class="icon-bar"></span>
+              <span class="icon-bar"></span>                        
+            </button>
+            <a class="navbar-brand" href="#">PDG Tool </a>
+          </div>
+          <div class="navbar-form navbar-right">
+            <button class="btn btn-primary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            Select Edges
+            </button>
+            <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                <FORM id = "edgeList" onclick= "edgeFilter()">
+                    <INPUT type="checkbox" name="select-all" id="select-all" onclick="allSelect()"> Select All 
+                    <br>
+                    <INPUT type="checkbox" name="remove-all" id="remove-all" onclick="removeSelect()"> Remove All 
+                    <br>
+                    <INPUT TYPE="checkbox" NAME="Selection" VALUE='{CONTROLDEP_ENTRY}' checked>CONTROLDEP_ENTRY
+                    <br>
+                    <INPUT TYPE="checkbox" NAME="Selection" VALUE='{CONTROLDEP_CALLINV}' checked>CONTROLDEP_CALLINV
+                    <br>
+                    <INPUT TYPE="checkbox" NAME="Selection" VALUE='{CONTROLDEP_BR}' checked>CONTROLDEP_BR
+                    <br>
+                    <INPUT TYPE="checkbox" NAME="Selection" VALUE='{CONTROLDEP_CALLRET}' checked>CONTROLDEP_CALLRET
+                    <br>
+                    <INPUT TYPE="checkbox" NAME="Selection" VALUE='{CALL}' checked>CALL
+                    <br>
+                    <INPUT TYPE="checkbox" NAME="Selection" VALUE='{D_RAW}' checked>D_RAW
+                    <br>
+                    <INPUT TYPE="checkbox" NAME="Selection" VALUE='{D_DEF_USE}' checked>D_DEF_USE
+                    <br>
+                    <INPUT TYPE="checkbox" NAME="Selection" VALUE='{D_ALIAS}' checked>D_ALIAS
+                    <br>
+                    <INPUT TYPE="checkbox" NAME="Selection" VALUE='{D_RET}' checked>D_RET
+                    <br>
+                    <INPUT TYPE="checkbox" NAME="Selection" VALUE='{P_IN}' checked>P_IN
+                    <br>
+                    <INPUT TYPE="checkbox" NAME="Selection" VALUE='{P_OUT}' checked>P_OUT
+                    <br>
+                    <INPUT TYPE="checkbox" NAME="Selection" VALUE='{P_F}' checked>P_F
+                </FORM>
+            </div>
+          </div>
+          <div class="navbar-form navbar-right text-right"> 
+            <button type="Submit" class="btn btn-default" onclick="submitFile()"> Submit</button>
+            <button type="Reset" class="btn btn-default" onclick="reset()"> Reset</button>
+          </div>
+          <div class="navbar-form navbar-right" id="myNavbar">
+            <input type = "file" id = "filename" accept=".dot"><br>
+          </div> 
+        </div>
+    </nav>
+    <div class="container text-left">
+    <div id="configOptions"> 
+        <div class="row">
+            <div class="col-sm-12 well">
+              <div class="well" id="map" >
+                <p><a href="#">Graph Key</a></p>
+                <table >
+                    <tr>
+                        <td><b>Control Dependency</b></td>
+                        <td>_____</td>
+                    </tr>
+                    <tr></tr>
+                    <tr>
+                        <td><b>Parameter Tree Link</b></td>
+                        <td>--------</td>
+                    </tr>
+                    <tr></tr>
+                    <tr>
+                        <td><b>Data Dependency</b></td>
+                        <td>..........</td>
+                    </tr>
+                    <tr></tr>
+                </table>
+              </div>
+              <div class="well">
+                <p><a href="#">Selected Node</a></p>
+                <input type = "text" id = "selectedNode"> 
+              </div>
+              <div class="well">
+                <p><a href="#">Dot Source</a></p>
+                <textarea name="dotValue" rows="15" cols="20" maxlength="50000" id="dotValue"></textarea>
+              </div>
+            </div>
+        </div>
+    </div>
+    <div class="well" style="width:1000px; height:649x;">
+        <div class="scroll" id="graph" style="height: 100%; width: 100%;"></div>
+    </div>
+    </div>
+    
+
+    <script src="https://d3js.org/d3.v5.js"></script>
+    <script src="https://unpkg.com/@hpcc-js/wasm@0.3.11/dist/index.min.js" type="javascript/worker"></script>
+    <script src="https://unpkg.com/d3-graphviz@3.0.5/build/d3-graphviz.js"></script>
+    <script src="https://unpkg.com/ace-builds@1.3.3/src-noconflict/ace.js" type="text/javascript" charset="utf-8"></script>
+    <script>
+
+var selectedNode = d3.select(null);
+
+
+var graphviz = d3.select("#graph").graphviz()
+.tweenPaths(false).tweenShapes(false)
+.attributer(attributer).zoom(true);
+/*
+function attributer(datum, index, nodes) {
+    var selection = d3.select(this);
+    if (datum.tag == "svg") {
+        var width = window.innerWidth;
+        var height = window.innerHeight;
+        var x = 200;
+        var y = 10
+        var scale = 0.9;
+        selection
+            .attr("width", width + "pt")
+            .attr("height", height + "pt")
+            .attr("viewBox", -x + " " + -y + " " + (width / scale) + " " + (height / scale));
+        datum.attributes.width = width + "pt";
+        datum.attributes.height = height + "pt";
+        datum.attributes.viewBox = -x + " " + -y + " " + (width / scale) + " " + (height / scale);
+    }
+}
+*/
+/*
+const scale = 0.9;
+function attributer(datum, index, nodes) {
+    var selection = d3.select(this);
+    if (datum.tag == "svg") {
+        datum.attributes = {
+            ...datum.attributes, 
+            width: '100%',
+            height: '100%',
+        };
+        const px2pt = 3 / 4;
+        const graphWidth = datum.attributes.viewBox.split(' ')[2] / px2pt;
+        const graphHeight = datum.attributes.viewBox.split(' ')[3] / px2pt;
+
+        const w = graphWidth / scale;
+        const h = graphHeight / scale;
+
+        const x = -(w - graphWidth) / 2;
+        const y = -(h - graphHeight) / 2;
+
+        const viewBox = `${x * px2pt} ${y * px2pt} ${w * px2pt} ${h * px2pt}`;
+        selection.attr('viewBox', viewBox);
+        datum.attributes.viewBox = viewBox;
+
+    }
+}
+*/
+const scale = 0.9;
+function attributer(datum, index, nodes) {
+    var selection = d3.select(this);
+    if (datum.tag == "svg") {
+        datum.attributes = {
+            ...datum.attributes, 
+            width: window.innerWidth,
+            height: window.innerHeight,
+        };
+        const px2pt = 3 / 4;
+        const graphWidth = datum.attributes.viewBox.split(' ')[2] / px2pt;
+        const graphHeight = datum.attributes.viewBox.split(' ')[3] / px2pt;
+
+        const w = graphWidth / scale;
+        const h = graphHeight / scale;
+
+        const x = -(w - graphWidth) / 2;
+        const y = -(h - graphHeight) / 2;
+
+        const viewBox = `${x * px2pt} ${y * px2pt} ${w * px2pt} ${h * px2pt}`;
+        selection.attr('viewBox', viewBox);
+        datum.attributes.viewBox = viewBox;
+
+    }
+}
+
+function reset() {
+    document.getElementById("filename").value = ''
+    document.getElementById("dotValue").value = ''
+    document.getElementById("selectedNode").value = ''
+    var edgeList = document.getElementsByName("Selection");
+    for (i = 0;i<edgeList.length;i++){
+        if(!edgeList[i].checked){
+            edgeList[i].checked = true;
+        }   
+    }
+    const xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function() {
+        if (this.readyState == 4 && this.status == 200) {
+            response_json = JSON.parse(xhttp.responseText)
+        }
+    };
+    xhttp.open("GET", "http://127.0.0.1:5000/resetGlobalVariables", true);
+    xhttp.send();
+}
+
+function submitFile() {
+    let files = document.getElementById('filename').files;
+    if (files.length > 0) {
+        // We have one file
+        const reader = new FileReader()
+        reader.addEventListener("load", () => {
+            // text file
+            const xhttp = new XMLHttpRequest();
+            xhttp.onreadystatechange = function() {
+                if (this.readyState == 4 && this.status == 200) {
+                    response_json = JSON.parse(xhttp.responseText)
+                    document.getElementById("dotValue").value = response_json["dotSource"];
+                    render();
+                }
+            };
+            xhttp.open("POST", "http://127.0.0.1:5000/submit", true);
+            xhttp.setRequestHeader("Content-Type", "application/json");
+            excludeEdgeList = getExcludedEdgeList();
+            xhttp.send(JSON.stringify({"dotSource" : btoa(reader.result)}));
+        }, false);
+        reader.readAsText(files[0]);
+    }
+}
+
+function getExcludedEdgeList() {
+    var edgeList = document.getElementsByName("Selection");
+    excludeEdgeList = [];
+    for (i = 0;i<edgeList.length;i++){
+        if(!edgeList[i].checked){
+            excludeEdgeList.push(edgeList[i].value);
+        }   
+    }
+    return excludeEdgeList;
+}
+
+function allSelect(){
+    var checkboxes = document.getElementsByName('Selection');
+    for(var i=0; i<checkboxes.length; i++){  
+        if(checkboxes[i].type=='checkbox')
+            checkboxes[i].checked=true;  
+    }  
+}
+
+function removeSelect(){
+    var checkboxes = document.getElementsByName('Selection');
+    for(var i=0; i<checkboxes.length; i++){  
+        if(checkboxes[i].type=='checkbox')
+            checkboxes[i].checked=false;  
+    }  
+}
+
+function edgeFilter() {
+    excludeEdgeList = getExcludedEdgeList();
+    var fileName = document.querySelector("#filename").value;
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function() {
+        if (this.readyState == 4 && this.status == 200) {
+            response_json = JSON.parse(xhttp.responseText)
+            document.getElementById("dotValue").value = response_json["dotSource"];
+            render();
+        }
+    };
+    xhttp.open("POST", "http://127.0.0.1:5000/edgeFilter", true);
+    xhttp.setRequestHeader("Content-Type", "application/json");
+    xhttp.send(JSON.stringify({"fileName" : fileName, "excludeEdges" : excludeEdgeList , "dotSource" : document.getElementById("dotValue").value}));
+}
+
+
+function render() {
+    dotSrc = document.getElementById("dotValue").value;
+    dotSrcLines = dotSrc.split('\n');
+    graphviz.renderDot(dotSrc, startApp);
+}
+
+function startApp() {
+    var nodes = d3.selectAll(".node")
+        .on("mouseover", function(){
+            d3.select(this)
+              //.transition()
+              //.duration('200')
+              .attr("r", 100)
+              .attr('fill', 'red')
+              .style("opacity", 0.5);
+    })
+        .on("mouseout", function(){
+            d3.select(this)
+              //.transition()
+              //.duration('100')
+              .attr("r", 5)
+              .attr("fill", "black")
+              .style("opacity", 1);
+    });
+    var edges = d3.selectAll(".edge");
+    
+    nodes.on("click", function() {
+        var event = d3.event;
+        event.preventDefault();
+        event.stopPropagation();
+        selectedNode = d3.select(this)._groups[0][0].__data__.key;
+        document.getElementById("selectedNode").value = selectedNode;
+        var xhttp = new XMLHttpRequest();
+        xhttp.onreadystatechange = function() {
+            if (this.readyState == 4 && this.status == 200) {
+                response_json = JSON.parse(xhttp.responseText)
+                document.getElementById("dotValue").value = response_json["dotSource"];
+                render();
+            }
+        };
+        xhttp.open("POST", "http://127.0.0.1:5000/clickNode", true);
+        xhttp.setRequestHeader("Content-Type", "application/json");
+        excludeEdgeList = getExcludedEdgeList();
+        xhttp.send(JSON.stringify({"selectedNode" : selectedNode, "excludeEdges" : excludeEdgeList, "dotSource" : document.getElementById("dotValue").value}));
+        unSelectNode();
+    });
+
+}
+
+function unSelectNode() {
+    selectedNode = d3.select(null);
+}
+
+</script>
+</body>
+
+</html>
